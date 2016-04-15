@@ -6,6 +6,8 @@ cmake_minimum_required (VERSION 2.8)
 
 project (Tizzy C)
 
+cmake_policy(SET CMP0026 OLD)
+
 set (MODULE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/.cmake/Modules")
 set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${MODULE_DIR})
 
@@ -33,5 +35,19 @@ add_subproject (unwind
 add_convenience_library (tizzy_core ${SOURCE_FILES})
 link_subproject (tizzy_core unwind)
 
-message("unwind lib = ${unwind_STATIC_LIB}")
-merge_static_libs (tizzy tizzy_core ${unwind_STATIC_LIB})
+set (PLATFORM_LIBS)
+
+find_package(LibDwarf)
+if (LIBDWARF_FOUND)
+  find_package(ZLIB)
+  list(APPEND PLATFORM_LIBS
+    ${LIBELF_LIBRARIES}
+    ${LIBDWARF_LIBRARIES}
+    ${ZLIB_LIBRARIES}
+  )
+endif ()
+
+merge_static_libs (tizzy tizzy_core
+    ${unwind_STATIC_LIB}
+    ${PLATFORM_LIBS}
+)

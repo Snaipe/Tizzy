@@ -41,6 +41,8 @@ function(merge_static_libs outlib)
   else()
     set(multiconfig TRUE)
   endif()
+
+  set (MERGE_DIR ${CMAKE_CURRENT_BINARY_DIR}/merge)
   
 # First get the file names of the libraries to be merged  
   foreach(lib ${libs})
@@ -107,9 +109,9 @@ function(merge_static_libs outlib)
   foreach(lib ${libfiles})
     message ("processing ${lib}")
 # objlistfile will contain the list of object files for the library
-    set(objlistfile ${lib}.objlist)
-    set(objdir ${lib}.objdir)
-    set(objlistcmake  ${objlistfile}.cmake)
+    set(objlistfile ${MERGE_DIR}/${lib}.objlist)
+    set(objdir ${MERGE_DIR}/${lib}.objdir)
+    set(objlistcmake ${objlistfile}.cmake)
 # we only need to extract files once 
     if(${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/cmake.check_cache IS_NEWER_THAN ${objlistcmake})
 #---------------------------------
