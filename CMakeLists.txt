@@ -39,11 +39,11 @@ set (PLATFORM_LIBS)
 
 find_package(LibDwarf)
 if (LIBDWARF_FOUND)
-  find_package(ZLIB)
+  find_package(LibZ)
   list(APPEND PLATFORM_LIBS
     ${LIBELF_LIBRARIES}
     ${LIBDWARF_LIBRARIES}
-    ${ZLIB_LIBRARIES}
+    ${LIBZ_LIBRARIES}
   )
 endif ()
 
