@@ -31,7 +31,7 @@
 
 void tzy_print_backtrace(void)
 {
-    char name[1024];
+    char buf[1024];
 
     unw_context_t uc;
     unw_getcontext(&uc);
@@ -39,37 +39,27 @@ void tzy_print_backtrace(void)
     unw_cursor_t cursor;
     unw_init_local(&cursor, &uc);
 
-    struct addr2line_ctx ctx;
-    int translate_addr = addr2line_init(&ctx);
-
     while (unw_step(&cursor) > 0) {
         unw_word_t ip;
         unw_get_reg(&cursor, UNW_REG_IP, &ip);
 
         unw_word_t offp;
-        unw_get_proc_name(&cursor, name, sizeof (name), &offp);
+        int rc = unw_get_proc_name(&cursor, buf, sizeof (buf), &offp);
+        const char *name = rc < 0 ? "<unknown fn>" : buf;
+
         if (!strncmp(name, "tzy_", 4))
             continue;
 
-        if (translate_addr) {
-            char *file;
-            size_t line;
-            if (!addr2line_translate(&ctx, (void*) ip, &file, &line))
-                goto fallback;
-
+        const char *file;
+        size_t line;
+        if (addr2line((void*) ip, &file, &line)) {
             tzy_println("  - at %s(%s:%llu)",
-                    name,
-                    basename_compat(file),
-                    (unsigned long long) line);
+                    name, file, (unsigned long long) line);
         } else {
-fallback:
             tzy_println("  - at %s(unknown @ %p)", name, (void*) ip);
         }
 
         if (!strcmp(name, "main"))
             break;
     }
-
-    if (translate_addr)
-        addr2line_term(&ctx);
 }

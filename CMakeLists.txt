@@ -29,25 +29,9 @@ add_subproject (unwind
          --disable-shared
          --disable-minidebuginfo
          --with-pic
-         --without-libunwind-${CMAKE_SYSTEM_PROCESSOR}
     AUTOTOOLS AUTOGEN_CONFIGURE)
 
 add_convenience_library (tizzy_core ${SOURCE_FILES})
 link_subproject (tizzy_core unwind)
 
-set (PLATFORM_LIBS)
-
-find_package(LibDwarf)
-if (LIBDWARF_FOUND)
-  find_package(LibZ)
-  list(APPEND PLATFORM_LIBS
-    ${LIBELF_LIBRARIES}
-    ${LIBDWARF_LIBRARIES}
-    ${LIBZ_LIBRARIES}
-  )
-endif ()
-
-merge_static_libs (tizzy tizzy_core
-    ${unwind_STATIC_LIB}
-    ${PLATFORM_LIBS}
-)
+merge_static_libs (tizzy tizzy_core ${unwind_STATIC_LIB})

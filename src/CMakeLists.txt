@@ -10,6 +10,10 @@ set (SOURCE_FILES
     src/backtrace.h
     src/basename.c
     src/basename.h
+    src/dwarf.c
+    src/dwarf.h
+    src/section.c
+    src/section.h
 )
 
 set (SOURCE_FILES ${SOURCE_FILES} PARENT_SCOPE)

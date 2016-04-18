@@ -1,0 +1,188 @@
+#define _GNU_SOURCE 1
+#include <stdio.h>
+#include "section.h"
+
+#ifdef HAVE_ELF
+
+# if defined __APPLE__
+#  include <mach-o/dyld.h>
+# endif
+
+# include <string.h>
+# include <sys/mman.h>
+# include <fcntl.h>
+# include <unistd.h>
+
+struct phdr_iter_ctx {
+    const void *addr;
+    const char *path;
+    size_t idx;
+};
+
+static int phdr_iter(struct dl_phdr_info *info, size_t size, void *data)
+{
+    struct phdr_iter_ctx *ctx = data;
+
+    for (size_t i = 0; i < info->dlpi_phnum; ++i) {
+        const ElfW(Phdr) *phdr = &info->dlpi_phdr[i];
+        if (ctx->addr >= (void *) phdr->p_vaddr
+                && ctx->addr < (void *) (phdr->p_vaddr + phdr->p_memsz)) {
+            ctx->path = info->dlpi_name;
+            return 1;
+        }
+    }
+    ++ctx->idx;
+    return 0;
+}
+
+static int open_self(void) {
+#if defined __linux__
+    return open("/proc/self/exe", O_RDONLY);
+#elif defined __APPLE__
+    char path[PATH_MAX];
+    uint32_t size = sizeof(path);
+    if (!_NSGetExecutablePath(path, &size) == 0)
+        return -1;
+    return open(path, O_RDONLY);
+#elif defined __NetBSD__
+    return open("/proc/curproc/exe", O_RDONLY)
+#elif defined __FreeBSD__
+    int fd = open("/proc/curproc/file", O_RDONLY);
+    /* Fallback */
+    if (fd == -1 && errno == ENOENT) {
+        int mib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1 };
+        char path[PATH_MAX];
+        size_t cb = sizeof (path);
+        sysctl(mib, sizeof (mib) / sizeof (int), path, &cb, NULL, 0);
+        fd = open(path, O_RDONLY);
+    }
+    return fd;
+#elif defined __OpenBSD__ || defined __DragonFly__
+    return open("/proc/curproc/file", O_RDONLY)
+#else
+    return -1;
+#endif
+}
+
+static int open_module_map(mod_handle *mod)
+{
+    /* Load the ELF header and the section header table */
+    const ElfW(Ehdr) *elf = mmap(NULL, sizeof (ElfW(Ehdr)),
+            PROT_READ, MAP_PRIVATE, mod->fd, 0);
+    const void *oldm = elf;
+
+    if (elf == MAP_FAILED)
+        goto fail;
+
+    if (memcmp(elf->e_ident, (char [4]) { 0x7f, 'E', 'L', 'F' }, 4))
+        goto fail;
+
+    size_t new_map_len = elf->e_shoff + elf->e_shnum * elf->e_shentsize;
+
+#ifdef HAVE_MREMAP
+    elf = mremap(elf, sizeof (ElfW(Ehdr)), new_map_len, MREMAP_MAYMOVE);
+#else
+    elf = mmap(NULL, new_map_len, PROT_READ, MAP_PRIVATE, mod->fd, 0);
+#endif
+
+    if (elf == MAP_FAILED)
+        goto fail;
+
+#ifndef HAVE_MREMAP
+    munmap((void *) oldm, sizeof (ElfW(Ehdr)));
+#endif
+
+    mod->len = new_map_len;
+    mod->map = elf;
+    return 1;
+
+fail:
+    munmap((void *) elf, sizeof (ElfW(Ehdr)));
+    return 0;
+}
+
+static void close_module_map(mod_handle *mod)
+{
+    munmap((void *) mod->map, mod->len);
+}
+
+int module_from_address(const void *addr, mod_handle *mod)
+{
+    struct phdr_iter_ctx ctx = { .addr = addr };
+    int found = dl_iterate_phdr(phdr_iter, &ctx);
+    int fd = -1;
+    if (found) {
+        if (*ctx.path)
+            fd = open(ctx.path, O_RDONLY);
+        else if (ctx.idx == 0)
+            fd = open_self();
+    }
+    if (fd == -1)
+        return 0;
+
+    mod->fd = fd;
+    return open_module_map(mod);
+}
+
+void close_module(mod_handle *mod)
+{
+    close_module_map(mod);
+    close(mod->fd);
+}
+
+static const void *map_shdr(int fd, const ElfW(Shdr) *shdr, struct section_mapping *out)
+{
+    size_t shdr_map_off = shdr->sh_offset & ~0xfffllu;
+    size_t shdr_map_len = shdr->sh_size + (shdr->sh_offset - shdr_map_off);
+
+    const uint8_t *shdr_map = mmap(NULL, shdr_map_len,
+            PROT_READ, MAP_PRIVATE, fd, shdr_map_off);
+
+    if (shdr_map == MAP_FAILED)
+        return NULL;
+
+    *out = (struct section_mapping) {
+        .map = shdr_map,
+        .len = shdr_map_len
+    };
+
+    return shdr_map + (shdr->sh_offset - shdr_map_off);
+}
+
+static void unmap_shdr(struct section_mapping *map)
+{
+    munmap((void*) map->map, map->len);
+}
+
+const void *map_section_data(mod_handle *mod, const char *name,
+        struct section_mapping *map)
+{
+    const ElfW(Shdr) *shdr = (void *) ((char *) mod->map + mod->map->e_shoff);
+    const ElfW(Shdr) *shstr_shdr = shdr + mod->map->e_shstrndx;
+
+    struct section_mapping shstr_map;
+    const char *shstr = map_shdr(mod->fd, shstr_shdr, &shstr_map);
+
+    const void *ptr = NULL;
+    for (size_t i = 0; i < mod->map->e_shnum; i++) {
+        const char *section_name = shstr + shdr[i].sh_name;
+        if (!strcmp(section_name, name)) {
+            const ElfW(Shdr) *hdr = shdr + i;
+            ptr = map_shdr(mod->fd, hdr, map);
+            map->sec_len = hdr->sh_size;
+            break;
+        }
+    }
+
+    unmap_shdr(&shstr_map);
+    return ptr;
+}
+
+void unmap_section_data(struct section_mapping *map)
+{
+    unmap_shdr(map);
+}
+
+#else
+# error Executable format not supported
+#endif
