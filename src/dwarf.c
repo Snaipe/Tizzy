@@ -109,7 +109,7 @@ static void dwarf_match_addr(dwarf_addr src_addr,
     regs->basic_block = 0;
     regs->prologue_end = 0;
     regs->epilogue_begin = 0;
-    if (src_addr >= regs->addr && src_addr < regs->addr + MAX_LINE_SIZE)
+    if (src_addr > regs->addr && src_addr < regs->addr + MAX_LINE_SIZE)
     {
         const char *filename = NULL, *dirname = NULL;
         dwarf_fill_filename(regs->file, include_directories, filenames,
