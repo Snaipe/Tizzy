@@ -1,0 +1,11 @@
+#ifndef CONFIG_H_IN_
+# define CONFIG_H_IN_
+
+#cmakedefine TZY_EXE_FMT_ELF @TZY_EXE_FMT_ELF@
+#cmakedefine TZY_EXE_FMT_PE @TZY_EXE_FMT_PE@
+#cmakedefine TZY_EXE_FMT_MACH_O @TZY_EXE_FMT_MACH_O@
+
+#cmakedefine HAVE_MMAP @HAVE_MMAP@
+#cmakedefine HAVE_MREMAP @HAVE_MREMAP@
+
+#endif /* !CONFIG_H_IN_ */

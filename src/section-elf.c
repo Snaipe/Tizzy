@@ -1,12 +1,4 @@
-#define _GNU_SOURCE 1
-#include <stdio.h>
-#include "section.h"
-
-#ifdef HAVE_ELF
-
-# if defined __APPLE__
-#  include <mach-o/dyld.h>
-# endif
+# include "section.h"
 
 # include <string.h>
 # include <sys/mman.h>
@@ -38,12 +30,6 @@ static int phdr_iter(struct dl_phdr_info *info, size_t size, void *data)
 static int open_self(void) {
 #if defined __linux__
     return open("/proc/self/exe", O_RDONLY);
-#elif defined __APPLE__
-    char path[PATH_MAX];
-    uint32_t size = sizeof(path);
-    if (!_NSGetExecutablePath(path, &size) == 0)
-        return -1;
-    return open(path, O_RDONLY);
 #elif defined __NetBSD__
     return open("/proc/curproc/exe", O_RDONLY)
 #elif defined __FreeBSD__
@@ -80,7 +66,7 @@ static int open_module_map(mod_handle *mod)
     size_t new_map_len = elf->e_shoff + elf->e_shnum * elf->e_shentsize;
 
 #ifdef HAVE_MREMAP
-    elf = mremap(elf, sizeof (ElfW(Ehdr)), new_map_len, MREMAP_MAYMOVE);
+    elf = mremap((void*) elf, sizeof (ElfW(Ehdr)), new_map_len, MREMAP_MAYMOVE);
 #else
     elf = mmap(NULL, new_map_len, PROT_READ, MAP_PRIVATE, mod->fd, 0);
 #endif
@@ -183,6 +169,4 @@ void unmap_section_data(struct section_mapping *map)
     unmap_shdr(map);
 }
 
-#else
-# error Executable format not supported
-#endif
+

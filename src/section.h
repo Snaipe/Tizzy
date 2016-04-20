@@ -1,9 +1,9 @@
 #ifndef SECTION_H_
 # define SECTION_H_
 
-# define HAVE_ELF 1
+# include "config.h"
 
-# ifdef HAVE_ELF
+# if defined TZY_EXE_FMT_ELF
 #  define MODULE_INVALID NULL
 #  include <link.h>
 
@@ -12,6 +12,9 @@ typedef struct mod_handle {
     const ElfW(Ehdr) *map;
     size_t len;
 } mod_handle;
+# elif defined TZY_EXE_FMT_MACH_O
+#  define MODULE_INVALID -1
+typedef int mod_handle;
 # endif
 
 struct section_mapping {
