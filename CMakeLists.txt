@@ -72,3 +72,5 @@ add_convenience_library (tizzy_core ${SOURCE_FILES})
 link_subproject (tizzy_core unwind)
 
 merge_static_libs (tizzy tizzy_core ${unwind_STATIC_LIB})
+
+add_subdirectory (samples)
