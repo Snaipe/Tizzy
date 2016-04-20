@@ -16,6 +16,13 @@ set (SOURCE_FILES
     src/section.h
 )
 
+if (WIN32)
+    set (SOURCE_FILES ${SOURCE_FILES}
+        src/pdb.c
+        src/pdb.h
+    )
+endif ()
+
 configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/config.h.in"
   "${CMAKE_CURRENT_SOURCE_DIR}/config.h"

@@ -21,39 +21,46 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#ifndef SECTION_H_
-# define SECTION_H_
+#include "addr2line.h"
+#include <windows.h>
+#include <dbghelp.h>
 
-# include "config.h"
+int pdb_translate(mod_handle *mod, struct addr2line_entry *ln)
+{
+    int rc = -1;
 
-# if defined TZY_EXE_FMT_ELF
-#  define MODULE_INVALID NULL
-#  include <link.h>
+    DWORD symopts = SYMOPT_DEFERRED_LOADS | SYMOPT_DEBUG | SYMOPT_LOAD_LINES;
+    HANDLE process = GetCurrentProcess();
 
-typedef struct mod_handle {
-    int fd;
-    const ElfW(Ehdr) *map;
-    size_t len;
-} mod_handle;
-# elif defined TZY_EXE_FMT_MACH_O
-#  define MODULE_INVALID -1
-typedef int mod_handle;
-# elif defined TZY_EXE_FMT_PE
-#  include <windows.h>
-#  define MODULE_INVALID NULL
-typedef HMODULE mod_handle;
-# endif
+    if (!SymInitialize(process, NULL, FALSE))
+        return -1;
 
-struct section_mapping {
-    const void *map;
-    size_t len;
-    size_t sec_len;
-};
+    ULONG64 module_base = 0;
 
-int module_from_address(const void *addr, mod_handle *mod);
-void close_module(mod_handle *mod);
-const void *map_section_data(mod_handle *mod, const char *name,
-        struct section_mapping *map);
-void unmap_section_data(struct section_mapping *map);
+    char filename[PATH_MAX];
+    filename[PATH_MAX - 1] = '\0';
 
-#endif /* !SECTION_H_ */
+    GetModuleFileName(*mod, filename, sizeof (filename) - 1);
+
+    SymSetOptions(symopts);
+    module_base = SymLoadModuleEx(process, NULL, filename, NULL, 0, 0, NULL, 0);
+    if (!module_base)
+        goto fail;
+
+    IMAGEHLP_LINE64 line = { .SizeOfStruct = sizeof (IMAGEHLP_LINE64) };
+    DWORD column;
+    if (!SymGetLineFromAddr64(process, (DWORD64) ln->addr, &column, &line))
+        goto fail;
+
+    ln->line = line.LineNumber;
+    ln->column = column;
+    ln->filename = line.FileName;
+
+    rc = 0;
+
+fail:
+    if (module_base)
+        SymUnloadModule64(process, module_base);
+    SymCleanup(process);
+    return rc;
+}

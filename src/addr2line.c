@@ -36,13 +36,16 @@ int addr2line(void *_addr, const char **file_out, size_t *lineno_out)
     struct section_mapping map;
     const void *debug_line = map_section_data(&mod, ".debug_line", &map);
 
-    if (!debug_line)
-        goto finish;
-
     struct addr2line_entry e = { .addr = _addr };
 
-    if (dwarf_translate(&e, debug_line, map.sec_len) < 0)
+    if (debug_line) {
+        if (dwarf_translate(&e, debug_line, map.sec_len) < 0)
+            goto finish;
+    }
+#ifdef _WIN32
+    else if (pdb_translate(mod, &e))
         goto finish;
+#endif
 
     if (e.filename == NULL)
         goto finish;
