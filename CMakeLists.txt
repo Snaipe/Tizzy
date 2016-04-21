@@ -17,6 +17,10 @@ include (LibUtils)
 include (Subprojects)
 include (CheckSymbolExists)
 
+if (NOT MSVC)
+    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -Wall -Wextra")
+endif ()
+
 if (CMAKE_SYSTEM_NAME MATCHES "Linux")
     set (TZY_EXE_FORMAT elf)
     set (TZY_EXE_FMT_ELF 1)
