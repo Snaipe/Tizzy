@@ -6,7 +6,9 @@ cmake_minimum_required (VERSION 2.8)
 
 project (Tizzy C)
 
-cmake_policy(SET CMP0026 OLD)
+if (POLICY CMP0026)
+    cmake_policy(SET CMP0026 OLD)
+endif ()
 
 set (MODULE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/.cmake/Modules")
 set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${MODULE_DIR})
