@@ -1,0 +1,10 @@
+*
+!*/
+
+!*.c
+!*.h
+!*.S
+!*.asm
+
+build
+src/config.h
