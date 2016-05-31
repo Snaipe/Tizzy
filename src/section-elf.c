@@ -36,6 +36,8 @@ struct phdr_iter_ctx {
 
 static int phdr_iter(struct dl_phdr_info *info, size_t size, void *data)
 {
+    (void) size;
+
     struct phdr_iter_ctx *ctx = data;
 
     for (size_t i = 0; i < info->dlpi_phnum; ++i) {
@@ -99,6 +101,8 @@ static int open_module_map(mod_handle *mod)
 
 #ifndef HAVE_MREMAP
     munmap((void *) oldm, sizeof (ElfW(Ehdr)));
+#else
+    (void) oldm;
 #endif
 
     mod->len = new_map_len;
