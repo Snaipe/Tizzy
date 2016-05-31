@@ -39,7 +39,7 @@
 
 dwarf_uword dwarf_decode_uleb128(const uint8_t **b) {
     dwarf_uword result = 0;
-    int shift = 0;
+    size_t shift = 0;
     for (;;) {
         uint8_t byte = **b;
         ++*b;
@@ -53,7 +53,7 @@ dwarf_uword dwarf_decode_uleb128(const uint8_t **b) {
 
 dwarf_sword dwarf_decode_sleb128(const uint8_t **b) {
     dwarf_sword result = 0;
-    int shift = 0;
+    size_t shift = 0;
     dwarf_bool sign;
     for (;;) {
         uint8_t byte = **b;
