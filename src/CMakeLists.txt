@@ -16,6 +16,8 @@ set (SOURCE_FILES
     src/section.h
 )
 
+set (INTERFACE_FILES include/tizzy.h)
+
 if (WIN32)
     set (SOURCE_FILES ${SOURCE_FILES}
         src/pdb.c
@@ -29,3 +31,4 @@ configure_file(
 )
 
 set (SOURCE_FILES ${SOURCE_FILES} PARENT_SCOPE)
+set (INTERFACE_FILES ${INTERFACE_FILES} PARENT_SCOPE)

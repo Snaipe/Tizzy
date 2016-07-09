@@ -13,6 +13,8 @@ endif ()
 set (MODULE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/.cmake/Modules")
 set (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${MODULE_DIR})
 
+option (TZY_SAMPLES "Build the samples" ON)
+
 include (LibUtils)
 include (Subprojects)
 include (CheckSymbolExists)
@@ -79,4 +81,17 @@ link_subproject (tizzy_core unwind)
 
 merge_static_libs (tizzy tizzy_core ${unwind_STATIC_LIB})
 
-add_subdirectory (samples)
+foreach (F ${INTERFACE_FILES})
+    get_filename_component(DEST "${F}" PATH)
+    install(FILES "${F}" DESTINATION "${DEST}")
+endforeach ()
+
+install(TARGETS tizzy
+    RUNTIME DESTINATION bin
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib ${install_flags}
+)
+
+if (TZY_SAMPLES)
+    add_subdirectory (samples)
+endif ()
